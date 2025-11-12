@@ -1,5 +1,13 @@
+# Generic Web Application Dockerfile (Node build + Nginx runtime)
+# Usage:
+#   docker build --build-arg BUILD_DIR=dist -t my-web-app -f Dockerfile-todo .
+#   docker run -p 8080:80 my-web-app
+
 # --- Build stage ---
 FROM node:20-alpine AS build
+
+# Build arguments
+ARG BUILD_DIR=dist
 
 # Set workdir
 WORKDIR /app
@@ -33,8 +41,11 @@ RUN if [ -f pnpm-lock.yaml ]; then \
 # --- Runtime stage ---
 FROM nginx:alpine AS runtime
 
+# Build arguments (must be re-declared for runtime stage if used in COPY)
+ARG BUILD_DIR=dist
+
 # Copy build output
-COPY --from=build /app/dist /usr/share/nginx/html
+COPY --from=build /app/${BUILD_DIR} /usr/share/nginx/html
 
 # Provide a default nginx config suitable for SPAs
 RUN rm /etc/nginx/conf.d/default.conf
@@ -50,7 +61,7 @@ RUN printf '%s\n' \
   '    try_files $uri /index.html;' \
   '  }' \
   '  # Static assets caching' \
-  '  location ~* \.(?:css|js|jpg|jpeg|gif|png|svg|ico|woff2?)$ {' \
+  '  location ~* \\.(?:css|js|jpg|jpeg|gif|png|svg|ico|woff2?)$ {' \
   '    expires 30d;' \
   '    access_log off;' \
   '  }' \
